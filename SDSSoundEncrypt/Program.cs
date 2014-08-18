@@ -6,7 +6,12 @@ namespace SDSSoundEncrypt
     {
         static void Main(string[] args)
         {
-            string fileNameOriginal = "Requiem for a Tower.wav";
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Please supply correct WAV file name as the first argument for encryption.");
+                Environment.Exit(1);
+            }
+            string fileNameOriginal = args[0];
             // Set encrypted file name to "%fileNameOriginal% (encrypted).wav"
             string fileNameEncrypted = fileNameOriginal.Insert(fileNameOriginal.IndexOf(".wav"), " (encrypted)");
             // Set decrypted file name to "%fileNameOriginal% (decrypted).wav"

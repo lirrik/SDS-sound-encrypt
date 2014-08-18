@@ -66,6 +66,7 @@ namespace SDSSoundEncrypt
         /// <summary>
         /// This method "fixes" WAV header for encrypted files. Original file contains short values, encrypted - double.
         /// We change WAV header to supply correct data as if it contains more samples.
+        /// Because of this, encrypted file duration is 4 times longer.
         /// </summary>
         /// <param name="fileName">The name of file to write to.</param>
         /// <param name="WAVheader">WAV header which will be fixed and written.</param>
@@ -77,7 +78,7 @@ namespace SDSSoundEncrypt
             WAVheader.Subchunk2Size += sizeof(double);
             // ChunkSize has to be changed as well as its value should always be 36 (bytes) greater than Subchunk2Size
             WAVheader.ChunkSize = WAVheader.Subchunk2Size + 36;
-            // TODO: Maybe fix sample byte size to get the same duration as original?
+            // Write header to encrypted file
             SetWAVHeader(fileName, WAVheader);
         }
 

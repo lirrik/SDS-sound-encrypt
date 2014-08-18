@@ -110,6 +110,11 @@ namespace SDSSoundEncrypt
             {
                 // Read 16-bit sample from WAV file
                 sample = br.ReadInt16();
+
+                // DEBUG INFO - samples with max values [-32768; 32767] sometimes cause problems
+                /*if ((Math.Abs((int)sample) == Modif) || (Math.Abs((int)sample) == (Modif - 1)))
+                    Console.WriteLine(sample);*/
+
                 // Normalize sample to [-1; 1]
                 c3 = (double)sample / Modif;
 
@@ -187,10 +192,16 @@ namespace SDSSoundEncrypt
                 c3 = GetC3Decrypted(x1i, x1i1, x1i2, n);
 
                 // Denormalize c3 value from [-1; 1] range to [-32768; 32767]
-                c3 *= Modif;
+                c3 *= Modif;            
 
                 // Convert to 16-bit sample
                 sample = (short)c3;
+
+                // DEBUG INFO - samples with max values [-32768; 32767] sometimes cause problems
+                /*if ((Math.Abs((int)sample) == Modif) || (Math.Abs((int)sample) == (Modif - 1)))
+                    Console.WriteLine(sample);
+                // Should throw an exception as it's out of 'short' range
+                sample = Convert.ToInt16(c3);*/
 
                 // Decrypted sample is written to file
                 bw.Write(sample);
