@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("SDSSoundEncrypt")]
-[assembly: AssemblyCopyright("Copyright © Kirill Basin, Sergey Prikhodko 2011-2014")]
+[assembly: AssemblyCopyright("Copyright © 2011-2014 Kirill Basin, Sergey Prikhodko")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
