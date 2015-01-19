@@ -22,7 +22,7 @@ namespace SDSSoundEncrypt
         private const double X10 = 0.1;
         private const double X20 = 0;
         // Modificator to convert 16-bit samples signed integers [-32768; 32767] to [-1; 1] range
-        private const double Modif = 32768;
+        private const double Modif = 32768.0;
         // For Z calculation
         private const double Z1 = -5.0;
         private const double Z2 = 10.0;
@@ -48,9 +48,10 @@ namespace SDSSoundEncrypt
         /// <returns>Calculates x2 SDS value.</returns>
         private static double GetX2Encrypted(double c3, double x1Prev, double x2Prev, double nPrev)
         {
-            // Using c5
-            return x2Prev + (nPrev - B1 * x2Prev - B2 * x2Prev * Math.Abs(x2Prev) - C1 * x1Prev - c3 * Math.Pow(x1Prev, 3) - C5 * Math.Pow(x1Prev, 5)) * DT;
-            //return x2Prev + (nPrev - B1 * x2Prev - B2 * x2Prev * Math.Abs(x2Prev) - C1 * x1Prev - c3 * Math.Pow(x1Prev, 3)) * DT;
+            // Using c3 and c5
+            return x2Prev + (nPrev - B1 * x2Prev - B2 * x2Prev * Math.Abs(x2Prev) - C1 * x1Prev - c3 * Math.Pow(x1Prev, 3.0) - C5 * Math.Pow(x1Prev, 5.0)) * DT;
+            // Using only c3
+            //return x2Prev + (nPrev - B1 * x2Prev - B2 * x2Prev * Math.Abs(x2Prev) - C1 * x1Prev - c3 * Math.Pow(x1Prev, 3.0)) * DT;
         }
 
         /// <summary>
@@ -63,18 +64,19 @@ namespace SDSSoundEncrypt
         /// <returns>Calculates c3 (SDS parameter) reverse value.</returns>
         private static double GetC3Decrypted(double x1i, double x1i1, double x1i2, double n)
         {
-            // Using c5
-            return ((2 * x1i1 - x1i - x1i2) / (DT * DT) + n - C1 * x1i - C5 * Math.Pow(x1i, 5) - B1 * (x1i1 - x1i) / DT - B2 * (x1i1 - x1i) * Math.Abs(x1i1 - x1i) / (DT * DT)) / Math.Pow(x1i, 3);
-            //return ((2 * x1i1 - x1i - x1i2) / (DT * DT) + n - C1 * x1i - B1 * (x1i1 - x1i) / DT - B2 * (x1i1 - x1i) * Math.Abs(x1i1 - x1i) / (DT * DT)) / Math.Pow(x1i, 3);
+            // Using c3 and c5
+            return ((2.0 * x1i1 - x1i - x1i2) / (DT * DT) + n - C1 * x1i - C5 * Math.Pow(x1i, 5.0) - B1 * (x1i1 - x1i) / DT - B2 * (x1i1 - x1i) * Math.Abs(x1i1 - x1i) / (DT * DT)) / Math.Pow(x1i, 3.0);
+            // Using only c3
+            //return ((2.0 * x1i1 - x1i - x1i2) / (DT * DT) + n - C1 * x1i - B1 * (x1i1 - x1i) / DT - B2 * (x1i1 - x1i) * Math.Abs(x1i1 - x1i) / (DT * DT)) / Math.Pow(x1i, 3.0);
         }
 
         /// <summary>
         /// Encrypts WAV file with SDS.
         /// </summary>
-        /// <param name="fileName">Original file name.</param>
-        /// <param name="fileNameEncrypted">Encrypted file name.</param>
+        /// <param name="OriginalWAVFile">WAV file to encrypt.</param>
+        /// <param name="EncryptedWAVFile">Encrypted WAV file.</param>
         /// <param name="key">Encryption key - seed value for random number generator (same value should be used for decryption).</param>
-        public static void EncryptWAVFile(string fileName, string fileNameEncrypted, int key)
+        public static void EncryptWAVFile(WAVFile OriginalWAVFile, WAVFile EncryptedWAVFile, int key)
         {
             // SDS values and white noise
             double x1, x2, n;
@@ -94,29 +96,49 @@ namespace SDSSoundEncrypt
             x1Prev = X10;
             x2Prev = X20;
 
-            FileStream fsOriginal = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            FileStream fsOriginal = new FileStream(OriginalWAVFile.FileName, FileMode.Open, FileAccess.Read);
             BinaryReader br = new BinaryReader(fsOriginal);
 
             // Move to data position right after header (header size is 44 bytes)
             br.BaseStream.Position = 44;
 
-            FileStream fsEncrypted = new FileStream(fileNameEncrypted, FileMode.Append, FileAccess.Write);
+            FileStream fsEncrypted = new FileStream(EncryptedWAVFile.FileName, FileMode.Append, FileAccess.Write);
             BinaryWriter bw = new BinaryWriter(fsEncrypted);
 
             // x1 starting value is written as the first sample into encrypted file
             bw.Write(x1Prev);
+
+            int samplesCount = 0;
 
             while (br.BaseStream.Length > br.BaseStream.Position)
             {
                 // Read 16-bit sample from WAV file
                 sample = br.ReadInt16();
 
-                // DEBUG INFO - samples with max values [-32768; 32767] sometimes cause problems
-                /*if ((Math.Abs((int)sample) == Modif) || (Math.Abs((int)sample) == (Modif - 1)))
-                    Console.WriteLine(sample);*/
-
                 // Normalize sample to [-1; 1]
-                c3 = (double)sample / Modif;
+                if (sample < 0)
+                {
+                    c3 = ((double)sample) / Modif;
+                }
+                else
+                {
+                    c3 = ((double)sample) / (Modif - 1);
+                }
+
+                /*
+                // TODO: Bug in decryption
+                if ((samplesCount == 48598) || (samplesCount == 48600))
+                {
+                    //System.Diagnostics.Debugger.Break();
+                    Console.WriteLine("Count {0}: {1}", samplesCount, c3);
+                }
+
+                if ((samplesCount == 48599) || (samplesCount == 50954) || (samplesCount == 76648) || (samplesCount == 98925) || (samplesCount == 123705))
+                {
+                    //System.Diagnostics.Debugger.Break();
+                    Console.WriteLine("{0} - {1}", c3, samplesCount);
+                }
+                */
 
                 // Calculate white noise and SDS values
                 z = Z1 + Z2 * rnd.NextDouble();
@@ -126,6 +148,7 @@ namespace SDSSoundEncrypt
 
                 // x1 is the encrypted sample so it's written to file
                 bw.Write(x1);
+                samplesCount++;
 
                 // Set current values as previous for the next iteration
                 x1Prev = x1;
@@ -133,7 +156,7 @@ namespace SDSSoundEncrypt
                 nPrev = n;
             }
 
-            Console.WriteLine("Finished encrypting.");
+            Console.WriteLine("Finished encrypting {0} samples.", samplesCount);
 
             br.Close();
             fsOriginal.Close();
@@ -144,10 +167,10 @@ namespace SDSSoundEncrypt
         /// <summary>
         /// Decrypts WAV file with SDS.
         /// </summary>
-        /// <param name="fileNameEncrypted">Encrypted file name.</param>
-        /// <param name="fileNameDecrypted">Decrypted file name.</param>
+        /// <param name="EncryptedWAVFile">Encrypted WAV file.</param>
+        /// <param name="DecryptedWAVFile">Decrypted WAV file.</param>
         /// <param name="key">Decryption key - seed value for random number generator (same value should be used for encryption).</param>
-        public static void DecryptWAVFile(string fileNameEncrypted, string fileNameDecrypted, int key)
+        public static void DecryptWAVFile(WAVFile EncryptedWAVFile, WAVFile DecryptedWAVFile, int key)
         {
             // SDS values x1[i], x1[i+1], x1[i+2], c3 (contains encrypted sample value)
             double x1i, x1i1, x1i2, c3;
@@ -159,14 +182,16 @@ namespace SDSSoundEncrypt
             // Seed a new random (seed value is our key)
             Random rnd = new Random(key);
 
-            FileStream fsEncrypted = new FileStream(fileNameEncrypted, FileMode.Open, FileAccess.Read);
+            FileStream fsEncrypted = new FileStream(EncryptedWAVFile.FileName, FileMode.Open, FileAccess.Read);
             BinaryReader br = new BinaryReader(fsEncrypted);
 
             // Move to data position right after header (header size is 44 bytes)
             br.BaseStream.Position = 44;
 
-            FileStream fsDecrypted = new FileStream(fileNameDecrypted, FileMode.Append, FileAccess.Write);
+            FileStream fsDecrypted = new FileStream(DecryptedWAVFile.FileName, FileMode.Append, FileAccess.Write);
             BinaryWriter bw = new BinaryWriter(fsDecrypted);
+
+            int samplesCount = 0;
 
             while (br.BaseStream.Length > br.BaseStream.Position)
             {
@@ -191,23 +216,42 @@ namespace SDSSoundEncrypt
                 // Calculate decrypted c3 parameter value
                 c3 = GetC3Decrypted(x1i, x1i1, x1i2, n);
 
+                /*
+                // TODO: Several decrypted c3s are false. Should throw an exception as sample will be out of 'short' range
+                //sample = Convert.ToInt16(c3);
+
+                if ((samplesCount == 48598) || (samplesCount == 48600))
+                {
+                    //System.Diagnostics.Debugger.Break();
+                    Console.WriteLine("Count {0}: {1}", samplesCount, c3);
+                }
+
+                if ((c3 > 1.0f) || (c3 < -1.0f))
+                {
+                    //System.Diagnostics.Debugger.Break();
+                    Console.WriteLine("{0} - {1}", c3, samplesCount);
+                }
+                */
+
                 // Denormalize c3 value from [-1; 1] range to [-32768; 32767]
-                c3 *= Modif;            
+                if (c3 < 0)
+                {
+                    c3 *= Modif;
+                }
+                else
+                {
+                    c3 *= Modif - 1;
+                }
 
-                // Convert to 16-bit sample
-                sample = (short)c3;
-
-                // DEBUG INFO - samples with max values [-32768; 32767] sometimes cause problems
-                /*if ((Math.Abs((int)sample) == Modif) || (Math.Abs((int)sample) == (Modif - 1)))
-                    Console.WriteLine(sample);
-                // Should throw an exception as it's out of 'short' range
-                sample = Convert.ToInt16(c3);*/
+                // Convert to 16-bit sample (rounding is important when converting from floating point!)
+                sample = (short)Math.Round(c3);
 
                 // Decrypted sample is written to file
                 bw.Write(sample);
+                samplesCount++;
             }
 
-            Console.WriteLine("Finished decrypting.");
+            Console.WriteLine("Finished decrypting {0} samples.", samplesCount);
 
             br.Close();
             fsEncrypted.Close();
