@@ -78,22 +78,22 @@ namespace SDSSoundEncrypt
         /// </summary>
         public void ReadWAVHeader()
         {
-            using (FileStream fs = new FileStream(this.FileName, FileMode.Open, FileAccess.Read))
+            using (FileStream fs = new FileStream(FileName, FileMode.Open, FileAccess.Read))
             using (BinaryReader br = new BinaryReader(fs))
             {
-                this.Header.ChunkID = br.ReadBytes(4);
-                this.Header.ChunkSize = br.ReadUInt32();
-                this.Header.Format = br.ReadBytes(4);
-                this.Header.Subchunk1ID = br.ReadBytes(4);
-                this.Header.Subchunk1Size = br.ReadUInt32();
-                this.Header.AudioFormat = br.ReadUInt16();
-                this.Header.NumChannels = br.ReadUInt16();
-                this.Header.SampleRate = br.ReadUInt32();
-                this.Header.ByteRate = br.ReadUInt32();
-                this.Header.BlockAlign = br.ReadUInt16();
-                this.Header.BitsPerSample = br.ReadUInt16();
-                this.Header.Subchunk2ID = br.ReadBytes(4);
-                this.Header.Subchunk2Size = br.ReadUInt32();
+                Header.ChunkID = br.ReadBytes(4);
+                Header.ChunkSize = br.ReadUInt32();
+                Header.Format = br.ReadBytes(4);
+                Header.Subchunk1ID = br.ReadBytes(4);
+                Header.Subchunk1Size = br.ReadUInt32();
+                Header.AudioFormat = br.ReadUInt16();
+                Header.NumChannels = br.ReadUInt16();
+                Header.SampleRate = br.ReadUInt32();
+                Header.ByteRate = br.ReadUInt32();
+                Header.BlockAlign = br.ReadUInt16();
+                Header.BitsPerSample = br.ReadUInt16();
+                Header.Subchunk2ID = br.ReadBytes(4);
+                Header.Subchunk2Size = br.ReadUInt32();
             }
         }
 
@@ -102,22 +102,22 @@ namespace SDSSoundEncrypt
         /// </summary>
         public void WriteWAVHeader()
         {
-            using (FileStream fs = new FileStream(this.FileName, FileMode.Create, FileAccess.Write))
+            using (FileStream fs = new FileStream(FileName, FileMode.Create, FileAccess.Write))
             using (BinaryWriter bw = new BinaryWriter(fs))
             {
-                bw.Write(this.Header.ChunkID);
-                bw.Write(this.Header.ChunkSize);
-                bw.Write(this.Header.Format);
-                bw.Write(this.Header.Subchunk1ID);
-                bw.Write(this.Header.Subchunk1Size);
-                bw.Write(this.Header.AudioFormat);
-                bw.Write(this.Header.NumChannels);
-                bw.Write(this.Header.SampleRate);
-                bw.Write(this.Header.ByteRate);
-                bw.Write(this.Header.BlockAlign);
-                bw.Write(this.Header.BitsPerSample);
-                bw.Write(this.Header.Subchunk2ID);
-                bw.Write(this.Header.Subchunk2Size);
+                bw.Write(Header.ChunkID);
+                bw.Write(Header.ChunkSize);
+                bw.Write(Header.Format);
+                bw.Write(Header.Subchunk1ID);
+                bw.Write(Header.Subchunk1Size);
+                bw.Write(Header.AudioFormat);
+                bw.Write(Header.NumChannels);
+                bw.Write(Header.SampleRate);
+                bw.Write(Header.ByteRate);
+                bw.Write(Header.BlockAlign);
+                bw.Write(Header.BitsPerSample);
+                bw.Write(Header.Subchunk2ID);
+                bw.Write(Header.Subchunk2Size);
             }
         }
 
@@ -129,11 +129,11 @@ namespace SDSSoundEncrypt
         public void WriteEncryptedWAVHeader()
         {
             // Fix difference between short and double
-            this.Header.Subchunk2Size *= sizeof(double) / sizeof(short);
+            Header.Subchunk2Size *= sizeof(double) / sizeof(short);
             // And we also have one extra sample at the beginning (x1prev)
-            this.Header.Subchunk2Size += sizeof(double);
+            Header.Subchunk2Size += sizeof(double);
             // ChunkSize has to be changed as well as its value should always be 36 (bytes) greater than Subchunk2Size
-            this.Header.ChunkSize = this.Header.Subchunk2Size + 36;
+            Header.ChunkSize = Header.Subchunk2Size + 36;
             // Write header to encrypted file
             WriteWAVHeader();
         }
@@ -146,9 +146,9 @@ namespace SDSSoundEncrypt
         {
             // 2 last encrypted samples won't be decrypted because reverse calculation requires 3 consequent values
             // But we inserted 1 extra sample in the beginning (x1prev) while encrypting, so we'll lose only 1 sample instead of 2
-            this.Header.Subchunk2Size -= sizeof(short);
+            Header.Subchunk2Size -= sizeof(short);
             // ChunkSize has to be changed as well as its value should always be 36 (bytes) greater than Subchunk2Size
-            this.Header.ChunkSize = this.Header.Subchunk2Size + 36;
+            Header.ChunkSize = Header.Subchunk2Size + 36;
             WriteWAVHeader();
         }
 
@@ -171,18 +171,18 @@ namespace SDSSoundEncrypt
         /// </summary>
         public void GetWAVFileInfo()
         {
-            Console.WriteLine("File name: {0}", this.FileName);
-            Console.WriteLine("Number of channels: {0}", this.Header.NumChannels);
-            Console.WriteLine("Sample rate: {0}", this.Header.SampleRate);
-            Console.WriteLine("Bytes per second: {0}", this.Header.ByteRate);
-            Console.WriteLine("Bytes per sample: {0}", this.Header.BlockAlign);
-            Console.WriteLine("Bits per sample: {0}", this.Header.BitsPerSample);
-            Console.WriteLine("Size of data (bytes): {0}", this.Header.Subchunk2Size);
-            Console.WriteLine("Size of chunk (data size + 36 bytes): {0}", this.Header.ChunkSize);
+            Console.WriteLine("File name: {0}", FileName);
+            Console.WriteLine("Number of channels: {0}", Header.NumChannels);
+            Console.WriteLine("Sample rate: {0}", Header.SampleRate);
+            Console.WriteLine("Bytes per second: {0}", Header.ByteRate);
+            Console.WriteLine("Bytes per sample: {0}", Header.BlockAlign);
+            Console.WriteLine("Bits per sample: {0}", Header.BitsPerSample);
+            Console.WriteLine("Size of data (bytes): {0}", Header.Subchunk2Size);
+            Console.WriteLine("Size of chunk (data size + 36 bytes): {0}", Header.ChunkSize);
 
             int durationMinutes;
             double durationSeconds;
-            GetDuration(this.Header, out durationMinutes, out durationSeconds);
+            GetDuration(Header, out durationMinutes, out durationSeconds);
 
             Console.WriteLine("Sound duration: {0}:{1}", durationMinutes.ToString("00"), durationSeconds.ToString("00.00"));
             Console.WriteLine();
