@@ -39,7 +39,7 @@ namespace SDSSoundEncrypt
                     WAVFileEncrypted.Header = WAVFileOriginal.Header;
 
                     // Fix WAV header for encrypted file and write it
-                    WAVFileEncrypted.WriteEncryptedWAVHeader();
+                    WAVFileEncrypted.CreateEncryptedWAVFile();
 
                     // Encrypt WAV file with SDS and seed value 1
                     SDS.EncryptWAVFile(WAVFileOriginal, WAVFileEncrypted, 1);
@@ -54,7 +54,7 @@ namespace SDSSoundEncrypt
                     WAVFileDecrypted.Header = WAVFileOriginal.Header;
 
                     // Fix WAV header for decrypted file and write it
-                    WAVFileDecrypted.WriteDecryptedWAVHeader();
+                    WAVFileDecrypted.CreateDecryptedWAVFile();
 
                     // Decrypt WAV file with SDS and seed value 1
                     SDS.DecryptWAVFile(WAVFileEncrypted, WAVFileDecrypted, 1);

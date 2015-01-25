@@ -54,19 +54,19 @@ namespace SDSSoundEncrypt
         }
 
         /// <summary>
-        /// WAV file name.
+        /// WAV file name
         /// </summary>
-        public string FileName;
+        public string FileName { get; set; }
 
         /// <summary>
-        /// WAV file header.
+        /// WAV file header
         /// </summary>
-        public WAVHeader Header;
+        public WAVHeader Header { get; set; }
 
         /// <summary>
         /// Constructor to get file name and memory for header.
         /// </summary>
-        /// <param name="fileName">File name.</param>
+        /// <param name="fileName">File name</param>
         public WAVFile(string fileName)
         {
             this.FileName = fileName;
@@ -81,26 +81,30 @@ namespace SDSSoundEncrypt
             using (FileStream fs = new FileStream(FileName, FileMode.Open, FileAccess.Read))
             using (BinaryReader br = new BinaryReader(fs))
             {
-                Header.ChunkID = br.ReadBytes(4);
-                Header.ChunkSize = br.ReadUInt32();
-                Header.Format = br.ReadBytes(4);
-                Header.Subchunk1ID = br.ReadBytes(4);
-                Header.Subchunk1Size = br.ReadUInt32();
-                Header.AudioFormat = br.ReadUInt16();
-                Header.NumChannels = br.ReadUInt16();
-                Header.SampleRate = br.ReadUInt32();
-                Header.ByteRate = br.ReadUInt32();
-                Header.BlockAlign = br.ReadUInt16();
-                Header.BitsPerSample = br.ReadUInt16();
-                Header.Subchunk2ID = br.ReadBytes(4);
-                Header.Subchunk2Size = br.ReadUInt32();
+                WAVHeader header = new WAVHeader();
+
+                header.ChunkID = br.ReadBytes(4);
+                header.ChunkSize = br.ReadUInt32();
+                header.Format = br.ReadBytes(4);
+                header.Subchunk1ID = br.ReadBytes(4);
+                header.Subchunk1Size = br.ReadUInt32();
+                header.AudioFormat = br.ReadUInt16();
+                header.NumChannels = br.ReadUInt16();
+                header.SampleRate = br.ReadUInt32();
+                header.ByteRate = br.ReadUInt32();
+                header.BlockAlign = br.ReadUInt16();
+                header.BitsPerSample = br.ReadUInt16();
+                header.Subchunk2ID = br.ReadBytes(4);
+                header.Subchunk2Size = br.ReadUInt32();
+
+                this.Header = header;
             }
         }
 
         /// <summary>
         /// Creates a new WAV file and writes header info.
         /// </summary>
-        public void WriteWAVHeader()
+        public void CreateWAVFile()
         {
             using (FileStream fs = new FileStream(FileName, FileMode.Create, FileAccess.Write))
             using (BinaryWriter bw = new BinaryWriter(fs))
@@ -126,30 +130,41 @@ namespace SDSSoundEncrypt
         /// We change WAV header to supply correct data as if it contains more samples.
         /// Because of this encrypted file duration seems to be 4 times longer and file is ~4 bigger.
         /// </summary>
-        public void WriteEncryptedWAVHeader()
+        public void CreateEncryptedWAVFile()
         {
+            WAVHeader header = this.Header;
+
             // Fix difference between short and double
-            Header.Subchunk2Size *= sizeof(double) / sizeof(short);
+            header.Subchunk2Size *= sizeof(double) / sizeof(short);
             // And we also have one extra sample at the beginning (x1prev)
-            Header.Subchunk2Size += sizeof(double);
+            header.Subchunk2Size += sizeof(double);
             // ChunkSize has to be changed as well as its value should always be 36 (bytes) greater than Subchunk2Size
-            Header.ChunkSize = Header.Subchunk2Size + 36;
-            // Write header to encrypted file
-            WriteWAVHeader();
+            header.ChunkSize = Header.Subchunk2Size + 36;
+
+            this.Header = header;
+
+            // Create a WAV file and write modified header to it
+            CreateWAVFile();
         }
 
         /// <summary>
         /// "Fixes" WAV header for decrypted files. Decrypted file contains one sample less.
         /// We change WAV header to supply correct data.
         /// </summary>
-        public void WriteDecryptedWAVHeader()
+        public void CreateDecryptedWAVFile()
         {
+            WAVHeader header = this.Header;
+
             // 2 last encrypted samples won't be decrypted because reverse calculation requires 3 consequent values
             // But we inserted 1 extra sample in the beginning (x1prev) while encrypting, so we'll lose only 1 sample instead of 2
-            Header.Subchunk2Size -= sizeof(short);
+            header.Subchunk2Size -= sizeof(short);
             // ChunkSize has to be changed as well as its value should always be 36 (bytes) greater than Subchunk2Size
-            Header.ChunkSize = Header.Subchunk2Size + 36;
-            WriteWAVHeader();
+            header.ChunkSize = Header.Subchunk2Size + 36;
+
+            this.Header = header;
+
+            // Create a WAV file and write modified header to it
+            CreateWAVFile();
         }
 
         /// <summary>
@@ -158,7 +173,7 @@ namespace SDSSoundEncrypt
         /// <param name="WAVheader">WAV file header to read info from.</param>
         /// <param name="durationMinutes">Output parameter for duration in minutes.</param>
         /// <param name="durationSeconds">Output parameter for duration in seconds.</param>
-        public void GetDuration(WAVHeader WAVheader, out int durationMinutes, out double durationSeconds)
+        public void GetWAVFileDuration(WAVHeader WAVheader, out int durationMinutes, out double durationSeconds)
         {
             // We get duration from header data, data size / bytes per sample / number of channels / sample rate
             durationSeconds = (double)WAVheader.Subchunk2Size / (WAVheader.BitsPerSample / 8) / WAVheader.NumChannels / WAVheader.SampleRate;
@@ -182,7 +197,7 @@ namespace SDSSoundEncrypt
 
             int durationMinutes;
             double durationSeconds;
-            GetDuration(Header, out durationMinutes, out durationSeconds);
+            GetWAVFileDuration(Header, out durationMinutes, out durationSeconds);
 
             Console.WriteLine("Sound duration: {0}:{1}", durationMinutes.ToString("00"), durationSeconds.ToString("00.00"));
             Console.WriteLine();
